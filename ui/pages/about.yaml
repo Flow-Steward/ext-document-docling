@@ -1,0 +1,21 @@
+page_id: about
+title: About
+components:
+  - component_id: docling_about
+    type: markdown
+    title: Docling Document Extraction
+    body: |
+      This extension connects Flow Steward workflows to Docling, an open-source
+      document processing service that converts documents into structured content.
+
+      **Deployment:** Use a cloud-hosted or self-hosted Docling service.
+
+      **Workflow contract:** The extension sends one workflow document artifact
+      to Docling and returns Markdown and Docling JSON artifacts for later steps.
+
+      **Configuration:** Project connections store the Docling endpoint and
+      optional API key. Each conversion step controls OCR, source format, OCR
+      language, and table processing.
+
+      Document interpretation and business rules stay in your workflow.
+      Official project: https://docling-project.github.io/

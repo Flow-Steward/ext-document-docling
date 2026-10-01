@@ -1,0 +1,67 @@
+operations:
+  - operation_id: convert_document
+    display_name: Convert Document
+    description: Convert one workflow artifact through Docling into Markdown and Docling JSON artifacts.
+    operation_kind: action
+    category: document_extraction
+    connection_type_ids: [docling]
+    inputs:
+      - name: artifact_handle
+        value_type: artifact_handle
+        required: true
+      - name: connection_ref
+        value_type: connection_ref
+        required: true
+      - name: from_format
+        value_type: text
+        required: false
+      - name: do_ocr
+        value_type: boolean
+        required: false
+      - name: force_ocr
+        value_type: boolean
+        required: false
+      - name: ocr_lang
+        value_type: text
+        required: false
+      - name: table_mode
+        value_type: text
+        required: false
+    outputs:
+      - name: markdown_artifact_handle
+        value_type: artifact_handle
+      - name: docling_json_artifact_handle
+        value_type: artifact_handle
+      - name: markdown_preview
+        value_type: text
+      - name: markdown_truncated
+        value_type: boolean
+      - name: provider_status
+        value_type: text
+      - name: processing_time
+        value_type: number
+      - name: timings
+        value_type: object
+      - name: errors
+        value_type: array
+    result_fields:
+      - result.markdown_artifact_handle
+      - result.docling_json_artifact_handle
+      - result.markdown_preview
+      - result.provider_status
+      - result.processing_time
+    error_codes:
+      - invalid_payload
+      - invalid_connection
+      - network_blocked
+      - insecure_public_http
+      - input_too_large
+      - response_too_large
+      - output_too_large
+      - artifact_access_failed
+      - provider_request_failed
+      - provider_http_error
+      - invalid_provider_response
+      - provider_failed
+      - missing_markdown
+      - missing_docling_json

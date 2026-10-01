@@ -1,0 +1,39 @@
+connection_types:
+  - connection_type_id: docling
+    display_name: Docling REST API
+    description: Project-scoped connection to a cloud or self-hosted Docling service.
+    config_schema:
+      type: object
+      additionalProperties: false
+      required:
+        - base_url
+      properties:
+        base_url:
+          type: string
+          format: uri
+          title: Base URL
+          description: Docling service base URL. Public endpoints must use HTTPS.
+        request_timeout_seconds:
+          type: integer
+          title: Request timeout seconds
+          description: Per-request Docling timeout, clamped to 1-240 seconds.
+          minimum: 1
+          maximum: 240
+          default: 30
+    secret_schema:
+      type: object
+      additionalProperties: false
+      properties:
+        api_key:
+          type: string
+          title: API key
+          description: Optional Docling API key sent only as X-Api-Key.
+    capabilities:
+      test_connection: false
+      live_request: true
+      workflow_trigger: false
+      callback_ingress: false
+    safety_profile:
+      uses_standard_http_sdk: true
+      follows_redirects: false
+      stores_secret_values: false

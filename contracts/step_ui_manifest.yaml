@@ -1,0 +1,31 @@
+forms:
+  - operation_id: convert_document
+    title: Convert document
+    section: Document conversion
+    fields:
+      - name: artifact_handle
+        widget_type: artifact_picker
+        label: Artifact
+        required: true
+      - name: from_format
+        widget_type: text
+        label: Source format
+        placeholder: pdf
+      - name: do_ocr
+        widget_type: boolean
+        label: OCR
+      - name: force_ocr
+        widget_type: boolean
+        label: Force OCR
+      - name: ocr_lang
+        widget_type: text
+        label: OCR language
+        placeholder: en
+      - name: table_mode
+        widget_type: select
+        label: Table mode
+        options:
+          - label: Fast
+            value: fast
+          - label: Accurate
+            value: accurate

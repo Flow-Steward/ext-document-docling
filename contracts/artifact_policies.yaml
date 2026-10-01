@@ -1,0 +1,22 @@
+policies:
+  - operation_id: convert_document
+    inputs:
+      - kind: artifact
+        value_type: artifact_handle
+        binding_key: source_document
+        field: artifact_handle
+        required: true
+        max_size_bytes: 20971520
+    outputs:
+      - kind: artifact
+        binding_key: markdown_artifact_handle
+        filename: document.md
+        content_type: text/markdown
+        max_size_bytes: 52428800
+        retention_class: run_window
+      - kind: artifact
+        binding_key: docling_json_artifact_handle
+        filename: document.docling.json
+        content_type: application/json
+        max_size_bytes: 52428800
+        retention_class: run_window
