@@ -219,6 +219,35 @@ def test_convert_document_posts_once_and_writes_markdown_and_json_artifacts(
     assert b'name="do_ocr"\r\n\r\ntrue' in body
 
 
+def test_convert_document_reports_each_stage_before_it_runs(
+    tmp_path: Path,
+    docling_server,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    import docling_extension
+
+    base_url, handler = docling_server
+    source = tmp_path / "source.pdf"
+    source.write_bytes(b"%PDF test")
+    stages: list[tuple[str, int]] = []
+    monkeypatch.setattr(
+        docling_extension,
+        "report_progress",
+        lambda message="", **_kwargs: stages.append((message, len(handler.requests))),
+    )
+
+    response = docling_extension.handle_payload(
+        _payload(base_url=base_url, api_key="secret-key", input_body_path=source)
+    )
+
+    assert response["ok"] is True
+    assert stages == [
+        ("Reading the document", 0),
+        ("Converting the document (1 KB) with Docling; this can take a few minutes", 0),
+        ("Saving the Markdown and Docling JSON files", 1),
+    ]
+
+
 def test_private_docling_url_is_rejected_before_artifact_read_or_api_key_send(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,

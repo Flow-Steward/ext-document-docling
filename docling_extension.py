@@ -22,6 +22,16 @@ from flowsteward_extension_sdk.http import (
     resolve_pinned_ips,
 )
 
+try:
+    from flowsteward_extension_sdk import report_progress
+except ImportError:  # a Core with an SDK older than 0.3.0 shows no progress
+
+    def report_progress(
+        message: str = "", *, done: int | None = None, total: int | None = None
+    ) -> None:
+        return None
+
+
 _TOKEN_APPLICATION_JSON = "application/json"
 
 INPUT_MAX_BYTES = 20 * 1024 * 1024
@@ -87,6 +97,7 @@ def convert_document(payload: dict[str, Any]) -> dict[str, Any]:
         default=REQUEST_TIMEOUT_DEFAULT_SECONDS,
         maximum=REQUEST_TIMEOUT_MAX_SECONDS,
     )
+    report_progress("Reading the document")
     document_body = read_artifact_bytes(
         payload,
         artifact_id=artifact_handle,
@@ -95,6 +106,11 @@ def convert_document(payload: dict[str, Any]) -> dict[str, Any]:
     )
     if len(document_body) > INPUT_MAX_BYTES:
         raise DoclingError("input_too_large", "Input artifact exceeds 20 MiB")
+    # The conversion is the long part: Docling answers once, when the whole document is done.
+    report_progress(
+        f"Converting the document ({_size_text(len(document_body))}) with Docling; "
+        "this can take a few minutes"
+    )
     response_payload = _post_docling_convert(
         base_url=base_url,
         document_body=document_body,
@@ -110,6 +126,12 @@ def convert_document(payload: dict[str, Any]) -> dict[str, Any]:
         timeout_seconds=request_timeout,
     )
     return _write_outputs(payload, response_payload)
+
+
+def _size_text(size_bytes: int) -> str:
+    if size_bytes >= 1024 * 1024:
+        return f"{size_bytes / (1024 * 1024):.1f} MB"
+    return f"{max(1, round(size_bytes / 1024))} KB"
 
 
 def preflight_docling_url(url: str) -> str:
@@ -256,6 +278,7 @@ def _write_outputs(payload: dict[str, Any], response: dict[str, Any]) -> dict[st
         raise DoclingError("output_too_large", "Markdown output exceeds 50 MiB")
     if len(json_body) > OUTPUT_MAX_BYTES:
         raise DoclingError("output_too_large", "Docling JSON output exceeds 50 MiB")
+    report_progress("Saving the Markdown and Docling JSON files")
     markdown_write = write_artifact_bytes(
         payload,
         markdown_body,
