@@ -23,7 +23,7 @@ from flowsteward_extension_sdk.http import (
     resolve_pinned_ips,
 )
 
-_TOKEN_APPLICATION_JSON = "application/json"
+_TOKEN_APPLICATION_JSON = "application/json"  # nosec B105 - a media type, not a secret
 
 INPUT_MAX_BYTES = 20 * 1024 * 1024
 RESPONSE_MAX_BYTES = 100 * 1024 * 1024
