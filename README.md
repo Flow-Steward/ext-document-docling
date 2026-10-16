@@ -10,6 +10,15 @@ artifacts:
 It only performs document conversion. It does not contain document-specific
 schemas, field extraction, or business rules.
 
+## Requirements
+
+This release speaks the host contract `extension_host_v2` with its final
+execution scope (`group_id`, `for_each_id`, `step_id`, `step_execution_id`)
+and is built on `flowsteward-extension-sdk` 0.4.0. A request with another
+contract, a missing scope key, or both a Group and a For each as its owner is
+refused before the document is read or sent. Install it on a Flow Steward Core
+that speaks this contract; an older Core does not run it.
+
 ## Connection
 
 Create a project connection with:

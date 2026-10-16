@@ -2,7 +2,7 @@ manifest_version: 2
 lifecycle: {data_schema_version: 1, data_migrations: []}
 extension_id: flowsteward.docling
 kind: tool_provider
-version: 0.1.1
+version: 0.2.0
 display_name: Docling Document Extraction
 description: Generic document conversion through an external Docling REST service.
 vendor:
@@ -33,6 +33,7 @@ account_scope:
   scope_type: project
   description: Docling endpoint configuration is project-scoped and optional API keys are stored as project connection secrets.
 runtime:
+  contract_version: extension_host_v2
   extension_contract_v2:
     connection_types: contracts/connection_types.yaml
     operation_manifest: contracts/operation_manifest.yaml

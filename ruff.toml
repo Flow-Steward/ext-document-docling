@@ -1,0 +1,5 @@
+# The style this repository is written in; the Flow Steward extension gate
+# runs ruff from this folder.
+target-version = "py311"
+line-length = 100
+extend-exclude = [".fs-python", "dev-wheels", "wheels"]

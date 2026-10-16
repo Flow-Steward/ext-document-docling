@@ -10,6 +10,7 @@ from typing import Any
 from urllib.error import HTTPError
 from urllib.parse import urljoin, urlparse
 
+from flowsteward_extension_sdk import report_progress, runtime_context_from_payload
 from flowsteward_extension_sdk.artifacts import (
     ArtifactAccessError,
     find_artifact_descriptor,
@@ -21,16 +22,6 @@ from flowsteward_extension_sdk.http import (
     open_pinned_url,
     resolve_pinned_ips,
 )
-
-try:
-    from flowsteward_extension_sdk import report_progress
-except ImportError:  # a Core with an SDK older than 0.3.0 shows no progress
-
-    def report_progress(
-        message: str = "", *, done: int | None = None, total: int | None = None
-    ) -> None:
-        return None
-
 
 _TOKEN_APPLICATION_JSON = "application/json"
 
@@ -64,6 +55,14 @@ class DoclingError(RuntimeError):
 
 def handle_payload(payload: dict[str, Any] | None) -> dict[str, Any]:
     root = _as_dict(payload)
+    # The host envelope is checked before anything is read or sent: another
+    # contract, a missing execution-scope key or two owners is refused here.
+    try:
+        runtime_context_from_payload(root)
+    except ValueError as exc:
+        response = _error("invalid_host_envelope", str(exc))
+        response["definitely_no_external_effect"] = True
+        return response
     action = _as_dict(root.get("action"))
     action_id = _text(action.get("action_id"))
     if action_id and action_id != "convert_document":

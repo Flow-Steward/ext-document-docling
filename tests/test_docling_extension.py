@@ -15,6 +15,20 @@ REPO_ROOT = BUNDLE_ROOT.parents[1]
 if str(BUNDLE_ROOT) not in sys.path:
     sys.path.insert(0, str(BUNDLE_ROOT))
 
+# The final extension_host_v2 execution scope: all four keys, at most one owner.
+ROOT_STEP_SCOPE = {
+    "group_id": None,
+    "for_each_id": None,
+    "step_id": "convert",
+    "step_execution_id": "2b0f6c1e-8d3a-4c55-9a51-0d6b1f1f0001",
+}
+GROUP_STEP_SCOPE = {**ROOT_STEP_SCOPE, "group_id": "prepare_documents"}
+FOR_EACH_STEP_SCOPE = {
+    **ROOT_STEP_SCOPE,
+    "for_each_id": "each_document",
+    "step_execution_id": "2b0f6c1e-8d3a-4c55-9a51-0d6b1f1f0002",
+}
+
 
 def _payload(
     *,
@@ -25,11 +39,12 @@ def _payload(
     input_size_bytes: int = 12,
     outputs: list[dict[str, Any]] | None = None,
     input_body_path: Path | None = None,
+    scope: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     input_path = input_body_path or Path("/dev/null")
     return {
-        "contract_version": "extension_host_v1",
-        "runtime_context": {},
+        "contract_version": "extension_host_v2",
+        "runtime_context": dict(FOR_EACH_STEP_SCOPE if scope is None else scope),
         "action": {
             "action_id": "convert_document",
             "target": {
@@ -122,7 +137,10 @@ class _DoclingHandler(BaseHTTPRequestHandler):
     response_payload: ClassVar[dict[str, Any]] = {
         "document": {
             "md_content": "# Extracted\n\nHello Docling",
-            "json_content": {"schema_name": "DoclingDocument", "body": {"children": []}},
+            "json_content": {
+                "schema_name": "DoclingDocument",
+                "body": {"children": []},
+            },
         },
         "status": "success",
         "processing_time": 1.25,
@@ -159,7 +177,10 @@ def docling_server(monkeypatch: pytest.MonkeyPatch):
     _DoclingHandler.response_payload = {
         "document": {
             "md_content": "# Extracted\n\nHello Docling",
-            "json_content": {"schema_name": "DoclingDocument", "body": {"children": []}},
+            "json_content": {
+                "schema_name": "DoclingDocument",
+                "body": {"children": []},
+            },
         },
         "status": "success",
         "processing_time": 1.25,
@@ -400,7 +421,10 @@ def test_success_with_empty_markdown_writes_zero_byte_artifact(tmp_path: Path, d
     handler.response_payload = {
         "document": {
             "md_content": "",
-            "json_content": {"schema_name": "DoclingDocument", "body": {"children": []}},
+            "json_content": {
+                "schema_name": "DoclingDocument",
+                "body": {"children": []},
+            },
         },
         "status": "success",
         "processing_time": 0.2,
@@ -483,13 +507,89 @@ def test_inline_provider_metadata_is_bounded(tmp_path: Path, docling_server):
     assert len(response["result"]["errors"][0]["message"]) <= 1000
 
 
+@pytest.mark.parametrize("scope", [ROOT_STEP_SCOPE, GROUP_STEP_SCOPE, FOR_EACH_STEP_SCOPE])
+def test_every_final_scope_owner_converts_and_writes_artifacts(
+    tmp_path: Path, docling_server, scope: dict[str, Any]
+):
+    import docling_extension
+
+    base_url, handler = docling_server
+    source = tmp_path / "source.pdf"
+    source.write_bytes(b"%PDF test")
+
+    response = docling_extension.handle_payload(
+        _payload(base_url=base_url, input_body_path=source, scope=scope)
+    )
+
+    assert response["ok"] is True
+    assert response["result"]["markdown_artifact_handle"] == "artifact:md_out"
+    assert (BUNDLE_ROOT / ".test-artifacts" / "md_out-document.md").read_text() == (
+        "# Extracted\n\nHello Docling"
+    )
+    assert len(handler.requests) == 1
+
+
+@pytest.mark.parametrize(
+    ("contract_version", "scope", "reason"),
+    [
+        ("extension_host_v1", FOR_EACH_STEP_SCOPE, "Unsupported host contract"),
+        ("", FOR_EACH_STEP_SCOPE, "Unsupported host contract"),
+        (
+            "extension_host_v2",
+            {k: v for k, v in FOR_EACH_STEP_SCOPE.items() if k != "for_each_id"},
+            "misses execution scope",
+        ),
+        (
+            "extension_host_v2",
+            {**FOR_EACH_STEP_SCOPE, "group_id": "prepare_documents"},
+            "both a Group and a For each",
+        ),
+        (
+            "extension_host_v2",
+            {**ROOT_STEP_SCOPE, "step_execution_id": None},
+            "without its logical execution",
+        ),
+    ],
+)
+def test_foreign_or_incomplete_envelope_is_refused_before_any_effect(
+    tmp_path: Path,
+    docling_server,
+    monkeypatch: pytest.MonkeyPatch,
+    contract_version: str,
+    scope: dict[str, Any],
+    reason: str,
+):
+    import docling_extension
+
+    base_url, handler = docling_server
+    source = tmp_path / "source.pdf"
+    source.write_bytes(b"%PDF test")
+
+    def fail_read(*_args: Any, **_kwargs: Any) -> bytes:
+        raise AssertionError("the input artifact must not be read for a refused envelope")
+
+    monkeypatch.setattr(docling_extension, "read_artifact_bytes", fail_read)
+    payload = _payload(base_url=base_url, input_body_path=source, scope=scope)
+    payload["contract_version"] = contract_version
+
+    response = docling_extension.handle_payload(payload)
+
+    assert response["ok"] is False
+    assert response["error_code"] == "invalid_host_envelope"
+    assert reason in response["error"]
+    assert response["definitely_no_external_effect"] is True
+    assert handler.requests == []
+
+
 def test_main_returns_nonzero_for_error_envelope(tmp_path: Path):
     payload = {
+        "contract_version": "extension_host_v2",
+        "runtime_context": dict(ROOT_STEP_SCOPE),
         "action": {
             "action_id": "convert_document",
             "input": {},
             "target": {"connection": {"config": {}}},
-        }
+        },
     }
 
     proc = subprocess.run(
