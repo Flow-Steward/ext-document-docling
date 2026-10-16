@@ -19,6 +19,10 @@ contract, a missing scope key, or both a Group and a For each as its owner is
 refused before the document is read or sent. Install it on a Flow Steward Core
 that speaks this contract; an older Core does not run it.
 
+Logo: `icon.png` next to `extension.yaml` (PNG, square, 32-512 px, at most
+100 KB) is what Flow Steward shows for this extension; this one is the Flow
+Steward wave mark.
+
 ## Connection
 
 Create a project connection with:
