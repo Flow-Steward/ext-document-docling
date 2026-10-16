@@ -23,7 +23,8 @@ from flowsteward_extension_sdk.http import (
     resolve_pinned_ips,
 )
 
-_TOKEN_APPLICATION_JSON = "application/json"  # nosec B105 - a media type, not a secret
+# A media type, not a secret.
+_TOKEN_APPLICATION_JSON = "application/json"  # nosec B105
 
 INPUT_MAX_BYTES = 20 * 1024 * 1024
 RESPONSE_MAX_BYTES = 100 * 1024 * 1024
@@ -175,7 +176,7 @@ def _post_docling_convert(
     document_body: bytes,
     input_descriptor: dict[str, Any],
     api_key: str,
-    options: dict[str, str],
+    options: dict[str, str | list[str]],
     pinned_ips: tuple[str, ...],
     timeout_seconds: int,
 ) -> dict[str, Any]:
@@ -313,7 +314,7 @@ def _write_outputs(payload: dict[str, Any], response: dict[str, Any]) -> dict[st
     }
 
 
-def _docling_options(input_payload: dict[str, Any]) -> dict[str, str]:
+def _docling_options(input_payload: dict[str, Any]) -> dict[str, str | list[str]]:
     options = {
         "to_formats": ["md", "json"],
         "image_export_mode": "placeholder",
@@ -330,10 +331,10 @@ def _docling_options(input_payload: dict[str, Any]) -> dict[str, str]:
         if value is None or value == "":
             continue
         options[target] = value
-    fields: dict[str, str] = {}
+    fields: dict[str, str | list[str]] = {}
     for key, value in options.items():
         if isinstance(value, list):
-            fields[key] = value
+            fields[key] = [_text(item) for item in value]
         elif isinstance(value, bool):
             fields[key] = "true" if value else "false"
         else:
