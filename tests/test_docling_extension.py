@@ -214,6 +214,8 @@ def test_convert_document_posts_once_and_writes_markdown_and_json_artifacts(
     assert response["ok"] is True
     result = response["result"]
     assert result["provider_status"] == "success"
+    assert result["markdown"] == "# Extracted\n\nHello Docling"
+    assert result["markdown_chars"] == len("# Extracted\n\nHello Docling")
     assert result["markdown_preview"] == "# Extracted\n\nHello Docling"
     assert result["markdown_truncated"] is False
     assert result["processing_time"] == 1.25
@@ -642,3 +644,24 @@ def test_input_artifact_size_is_capped_before_provider_call(tmp_path: Path, docl
     assert response["ok"] is False
     assert response["error_code"] == "input_too_large"
     assert handler.requests == []
+
+
+def test_inline_markdown_returns_the_whole_document_beyond_the_preview():
+    import docling_extension
+
+    document = 'Ünïcode line with "quotes"\n' * 2000
+    assert len(document) > docling_extension.MARKDOWN_PREVIEW_MAX_CHARS
+    assert docling_extension._inline_markdown(document) == document
+
+
+def test_inline_markdown_cuts_only_at_the_output_limit(monkeypatch):
+    import json
+
+    import docling_extension
+
+    monkeypatch.setattr(docling_extension, "MARKDOWN_INLINE_MAX_BYTES", 1000)
+    document = "ж\n" * 2000
+    inline = docling_extension._inline_markdown(document)
+    assert document.startswith(inline)
+    assert len(json.dumps(inline, ensure_ascii=False).encode("utf-8")) <= 1000
+    assert len(json.dumps(document[: len(inline) + 1], ensure_ascii=False).encode("utf-8")) > 1000

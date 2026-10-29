@@ -33,6 +33,10 @@ REQUEST_TIMEOUT_DEFAULT_SECONDS = 30
 REQUEST_TIMEOUT_MAX_SECONDS = 240
 ARTIFACT_IO_TIMEOUT_SECONDS = 10
 MARKDOWN_PREVIEW_MAX_CHARS = 4000
+# The whole document goes back inline as `markdown`. Core kills an extension
+# whose stdout passes FS_EXTENSION_OUTPUT_MAX_BYTES (5 MiB by default), so the
+# inline text stops at 3 MiB once JSON-encoded; `document.md` always has all of it.
+MARKDOWN_INLINE_MAX_BYTES = 3 * 1024 * 1024
 INLINE_STRING_MAX_CHARS = 1000
 INLINE_KEY_MAX_CHARS = 128
 INLINE_COLLECTION_MAX_ITEMS = 20
@@ -252,7 +256,6 @@ def _write_outputs(payload: dict[str, Any], response: dict[str, Any]) -> dict[st
         "timings": _bounded_json_object(response.get("timings")),
         "errors": errors,
         "markdown_preview": _bounded_text(markdown, limit=MARKDOWN_PREVIEW_MAX_CHARS),
-        "markdown_truncated": len(markdown) > MARKDOWN_PREVIEW_MAX_CHARS,
     }
     if status not in {"success", "partial_success"}:
         raise DoclingError(
@@ -293,8 +296,12 @@ def _write_outputs(payload: dict[str, Any], response: dict[str, Any]) -> dict[st
         content_type=_TOKEN_APPLICATION_JSON,
         timeout_seconds=ARTIFACT_IO_TIMEOUT_SECONDS,
     )
+    inline_markdown = _inline_markdown(markdown)
     return {
         **base_result,
+        "markdown": inline_markdown,
+        "markdown_chars": len(markdown),
+        "markdown_truncated": len(inline_markdown) < len(markdown),
         "markdown_artifact_handle": _text(markdown_write.get("artifact_handle")),
         "docling_json_artifact_handle": _text(json_write.get("artifact_handle")),
         "artifacts": {
@@ -312,6 +319,24 @@ def _write_outputs(payload: dict[str, Any], response: dict[str, Any]) -> dict[st
             },
         },
     }
+
+
+def _inline_markdown(markdown: str) -> str:
+    """Return the Markdown whole, or the longest prefix that fits the inline limit."""
+
+    def encoded_size(text: str) -> int:
+        return len(json.dumps(text, ensure_ascii=False).encode("utf-8"))
+
+    if encoded_size(markdown) <= MARKDOWN_INLINE_MAX_BYTES:
+        return markdown
+    low, high = 0, len(markdown)
+    while low < high:
+        middle = (low + high + 1) // 2
+        if encoded_size(markdown[:middle]) <= MARKDOWN_INLINE_MAX_BYTES:
+            low = middle
+        else:
+            high = middle - 1
+    return markdown[:low]
 
 
 def _docling_options(input_payload: dict[str, Any]) -> dict[str, str | list[str]]:

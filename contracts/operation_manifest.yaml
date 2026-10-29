@@ -32,6 +32,10 @@ operations:
         value_type: artifact_handle
       - name: docling_json_artifact_handle
         value_type: artifact_handle
+      - name: markdown
+        value_type: text
+      - name: markdown_chars
+        value_type: number
       - name: markdown_preview
         value_type: text
       - name: markdown_truncated
@@ -47,7 +51,10 @@ operations:
     result_fields:
       - result.markdown_artifact_handle
       - result.docling_json_artifact_handle
+      - result.markdown
+      - result.markdown_chars
       - result.markdown_preview
+      - result.markdown_truncated
       - result.provider_status
       - result.processing_time
     error_codes:

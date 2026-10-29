@@ -7,6 +7,15 @@ artifacts:
 - `document.md` (`text/markdown`)
 - `document.docling.json` (`application/json`)
 
+The operation result also carries the document text itself:
+
+- `markdown`: the whole converted Markdown, for the next workflow step. Text
+  beyond 3 MiB (JSON-encoded) is cut so the result stays under Flow Steward's
+  5 MiB extension output limit; `document.md` always holds all of it.
+- `markdown_chars`: the length of the whole Markdown in characters.
+- `markdown_truncated`: `true` only when `markdown` was cut at that limit.
+- `markdown_preview`: the first 4,000 characters, for display.
+
 It only performs document conversion. It does not contain document-specific
 schemas, field extraction, or business rules.
 

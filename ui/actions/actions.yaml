@@ -32,6 +32,7 @@ actions:
     result_fields:
       - markdown_artifact_handle
       - docling_json_artifact_handle
+      - markdown_chars
       - markdown_preview
       - markdown_truncated
       - provider_status
