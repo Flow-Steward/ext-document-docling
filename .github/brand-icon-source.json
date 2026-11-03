@@ -1,0 +1,9 @@
+{
+  "brand": "Docling",
+  "source_page": "https://docling.ai/",
+  "source_url": "https://docling.ai/img/logo.svg",
+  "retrieved_at": "2026-11-03",
+  "source_sha256": "91b8ecbf53d74c663d28ca059881dcf41bb602207d3ea8c0c01dcd3edad84743",
+  "icon_sha256": "de40855bc3ace4a02933c32d5330c770a62deb199da34eb951877ac8a92c4807",
+  "transformation": "Docling site header/favicon SVG. Rasterized to 256x256 preserving viewBox, colors, and aspect ratio."
+}
