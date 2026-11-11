@@ -1,8 +1,10 @@
 # Docling Document Extraction Extension
 
-`flowsteward.docling` is a generic tool-provider extension that sends a workflow
-document artifact to an external Docling REST API and writes two workflow
-artifacts:
+Prepare documents for agents, classification and review with Docling Document Extraction. It sends a workflow document artifact to an external Docling REST service and returns Markdown plus Docling JSON. It writes both outputs as workflow artifacts, giving later steps readable text and the service's structured document representation. The result also includes inline Markdown, a preview, the full character count and a flag showing whether the inline text was shortened.
+
+The conversion action supports optional source-format, OCR, OCR-language and table-processing settings. Use it to prepare documents for an agent, pass extracted text into a classification or review step, or preserve converted files for downstream processing. Document-specific field extraction and business rules can be implemented in later workflow steps.
+
+You can connect a public managed endpoint or a separately deployed Docling service on your own infrastructure. Docling itself is not bundled with the extension. Input documents are limited to 20 MiB, and each output artifact to 50 MiB. Large inline Markdown is shortened while the Markdown artifact retains the complete conversion.
 
 - `document.md` (`text/markdown`)
 - `document.docling.json` (`application/json`)
