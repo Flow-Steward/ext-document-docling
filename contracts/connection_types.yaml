@@ -12,7 +12,7 @@ connection_types:
           type: string
           format: uri
           title: Base URL
-          description: Docling service base URL. Public endpoints must use HTTPS.
+          description: Public Docling endpoints require HTTPS. Private or local addresses require administrator-enabled private-network access, a global host setting.
         request_timeout_seconds:
           type: integer
           title: Request timeout seconds

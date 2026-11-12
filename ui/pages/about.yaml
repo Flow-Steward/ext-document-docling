@@ -8,7 +8,9 @@ components:
       This extension connects Flow Steward workflows to Docling, an open-source
       document processing service that converts documents into structured content.
 
-      **Deployment:** Requires Flow Steward 1.4.0 or later. Use a cloud-hosted or self-hosted Docling service.
+      **Deployment:** Requires extension runtime contract 1.4.0 or later; compatibility is checked during installation. Use a cloud-hosted or self-hosted Docling service.
+      Public endpoints require HTTPS. Private or local addresses require an
+      administrator to enable private-network access, a global host setting.
 
       **Workflow contract:** The extension sends one workflow document artifact
       to Docling and returns Markdown and Docling JSON artifacts for later steps.

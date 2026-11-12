@@ -25,7 +25,7 @@ fields:
     widget: text
     required: true
     placeholder: https://docling.example.com
-    help: Docling service base URL. Public endpoints must use HTTPS.
+    help: Public Docling endpoints require HTTPS. Private or local addresses require administrator-enabled private-network access, a global host setting.
   - path: request_timeout_seconds
     label: Request timeout seconds
     widget: integer
