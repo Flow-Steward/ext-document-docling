@@ -15,6 +15,9 @@ operations:
       - name: from_format
         value_type: text
         required: false
+        schema:
+          type: string
+          pattern: '^[\u0009-\u000d\u001c-\u0020\u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]*(?:docx|doc|rtf|pptx|ppt|html|mhtml|image|pdf|asciidoc|md|csv|xlsx|xls|odt|ods|odp|xml_uspto|xml_jats|xml_xbrl|xml_doclang|dclx|mets_gbs|json_docling|audio|video|vtt|latex|email|epub|boxnote|iwork_pages|iwork_keynote|iwork_numbers|ebcdic|afp)?[\u0009-\u000d\u001c-\u0020\u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]*$'
       - name: do_ocr
         value_type: boolean
         required: false
@@ -27,6 +30,9 @@ operations:
       - name: table_mode
         value_type: text
         required: false
+        schema:
+          type: string
+          pattern: '^[\u0009-\u000d\u001c-\u0020\u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]*(?:fast|accurate)?[\u0009-\u000d\u001c-\u0020\u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]*$'
     outputs:
       - name: markdown_artifact_handle
         value_type: artifact_handle

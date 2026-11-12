@@ -1,0 +1,32 @@
+schema_version: extension_descriptor_v1
+lifecycle: {data_schema_version: 1, data_migrations: []}
+extension_id: flowsteward.docling
+release_version: 0.3.3
+extension_type: service_extension
+identity:
+  display_name: Docling Document Extraction
+  description: |-
+    Prepare documents for agents, classification and review with Docling Document Extraction. It sends a workflow document artifact to an external Docling REST service and returns Markdown plus Docling JSON. It writes both outputs as workflow artifacts, giving later steps readable text and the service's structured document representation. The result also includes inline Markdown, a preview, the full character count and a flag showing whether the inline text was shortened.
+
+    The conversion action supports optional source-format, OCR, OCR-language and table-processing settings. Use it to prepare documents for an agent, pass extracted text into a classification or review step, or preserve converted files for downstream processing. Document-specific field extraction and business rules can be implemented in later workflow steps.
+
+    You can connect a public managed endpoint or a separately deployed Docling service on your own infrastructure. Docling itself is not bundled with the extension. Input documents are limited to 20 MiB, and each output artifact to 50 MiB. Large inline Markdown is shortened while the Markdown artifact retains the complete conversion.
+  tags: [docling, document-extraction, markdown]
+vendor: {vendor_name: Flow Steward, support_url: 'https://github.com/Flow-Steward/ext-document-docling/issues'}
+listing: {visibility: public_reference, category: data}
+distribution: {channel: private_byo, execution_modes: [local], allows_self_hosted: true, requires_connected_control_plane: false, import_sources: [file]}
+runtime:
+  contract_version: extension_host_v2
+  compatibility: {platform_min: 1.4.0}
+  extension_contract_v2:
+    connection_types: contracts/connection_types.yaml
+    operation_manifest: contracts/operation_manifest.yaml
+    artifact_policies: contracts/artifact_policies.yaml
+    step_ui_manifest: contracts/step_ui_manifest.yaml
+artifacts:
+  extensions:
+  - extension_id: flowsteward.docling
+    ref: extension.yaml
+    publish: true
+provenance: {origin: imported, notes: Bundle-local contracts.}
+commerce: {billing_mode: free}

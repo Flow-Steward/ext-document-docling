@@ -1,5 +1,10 @@
 # Docling Document Extraction Extension
 
+Requires extension runtime contract 1.4.0 or later for typed workflow inputs
+(`runtime.compatibility.platform_min`; compatibility is checked during
+installation). This is the host contract version, not the Flow Steward product
+version.
+
 Prepare documents for agents, classification and review with Docling Document Extraction. It sends a workflow document artifact to an external Docling REST service and returns Markdown plus Docling JSON. It writes both outputs as workflow artifacts, giving later steps readable text and the service's structured document representation. The result also includes inline Markdown, a preview, the full character count and a flag showing whether the inline text was shortened.
 
 The conversion action supports optional source-format, OCR, OCR-language and table-processing settings. Use it to prepare documents for an agent, pass extracted text into a classification or review step, or preserve converted files for downstream processing. Document-specific field extraction and business rules can be implemented in later workflow steps.
@@ -104,7 +109,7 @@ and uses `image_export_mode=placeholder`.
 
 Optional settings:
 
-- `from_format`
+- `from_format` (optional; leave unset for automatic detection). Explicit options follow docling-serve 1.38.2; other server versions may support a different set.
 - `do_ocr`
 - `force_ocr`
 - `ocr_lang`

@@ -32,6 +32,47 @@ OUTPUT_MAX_BYTES = 50 * 1024 * 1024
 REQUEST_TIMEOUT_DEFAULT_SECONDS = 30
 REQUEST_TIMEOUT_MAX_SECONDS = 240
 ARTIFACT_IO_TIMEOUT_SECONDS = 10
+SOURCE_FORMATS = frozenset(
+    {
+        "docx",
+        "doc",
+        "rtf",
+        "pptx",
+        "ppt",
+        "html",
+        "mhtml",
+        "image",
+        "pdf",
+        "asciidoc",
+        "md",
+        "csv",
+        "xlsx",
+        "xls",
+        "odt",
+        "ods",
+        "odp",
+        "xml_uspto",
+        "xml_jats",
+        "xml_xbrl",
+        "xml_doclang",
+        "dclx",
+        "mets_gbs",
+        "json_docling",
+        "audio",
+        "video",
+        "vtt",
+        "latex",
+        "email",
+        "epub",
+        "boxnote",
+        "iwork_pages",
+        "iwork_keynote",
+        "iwork_numbers",
+        "ebcdic",
+        "afp",
+    }
+)
+TABLE_MODES = frozenset({"fast", "accurate"})
 MARKDOWN_PREVIEW_MAX_CHARS = 4000
 # The whole document goes back inline as `markdown`. Core kills an extension
 # whose stdout passes FS_EXTENSION_OUTPUT_MAX_BYTES (5 MiB by default), so the
@@ -89,6 +130,7 @@ def handle_payload(payload: dict[str, Any] | None) -> dict[str, Any]:
 def convert_document(payload: dict[str, Any]) -> dict[str, Any]:
     action = _as_dict(payload.get("action"))
     input_payload = _as_dict(action.get("input"))
+    options = _docling_options(input_payload)
     artifact_handle = _artifact_handle(input_payload)
     connection = _as_dict(_as_dict(action.get("target")).get("connection"))
     config = _as_dict(connection.get("config"))
@@ -125,7 +167,7 @@ def convert_document(payload: dict[str, Any]) -> dict[str, Any]:
             role="input",
         ),
         api_key=_text(secrets.get("api_key")),
-        options=_docling_options(input_payload),
+        options=options,
         pinned_ips=pinned_ips,
         timeout_seconds=request_timeout,
     )
@@ -340,6 +382,18 @@ def _inline_markdown(markdown: str) -> str:
 
 
 def _docling_options(input_payload: dict[str, Any]) -> dict[str, str | list[str]]:
+    for field, allowed in (("from_format", SOURCE_FORMATS), ("table_mode", TABLE_MODES)):
+        value = input_payload.get(field)
+        if isinstance(value, str):
+            value = value.strip()
+        if (
+            value is not None
+            and value != ""
+            and (not isinstance(value, str) or value not in allowed)
+        ):
+            raise DoclingError(
+                "invalid_payload", f"{field}: choose a supported option or leave it empty"
+            )
     options = {
         "to_formats": ["md", "json"],
         "image_export_mode": "placeholder",

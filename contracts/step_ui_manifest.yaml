@@ -8,9 +8,82 @@ forms:
         label: Artifact
         required: true
       - name: from_format
-        widget_type: text
+        widget_type: select
         label: Source format
-        placeholder: pdf
+        help_text: Leave empty for automatic detection. Options follow docling-serve 1.38.2; other versions may support different formats.
+        options:
+          - label: docx
+            value: docx
+          - label: doc
+            value: doc
+          - label: rtf
+            value: rtf
+          - label: pptx
+            value: pptx
+          - label: ppt
+            value: ppt
+          - label: html
+            value: html
+          - label: mhtml
+            value: mhtml
+          - label: image
+            value: image
+          - label: pdf
+            value: pdf
+          - label: asciidoc
+            value: asciidoc
+          - label: md
+            value: md
+          - label: csv
+            value: csv
+          - label: xlsx
+            value: xlsx
+          - label: xls
+            value: xls
+          - label: odt
+            value: odt
+          - label: ods
+            value: ods
+          - label: odp
+            value: odp
+          - label: xml_uspto
+            value: xml_uspto
+          - label: xml_jats
+            value: xml_jats
+          - label: xml_xbrl
+            value: xml_xbrl
+          - label: xml_doclang
+            value: xml_doclang
+          - label: dclx
+            value: dclx
+          - label: mets_gbs
+            value: mets_gbs
+          - label: json_docling
+            value: json_docling
+          - label: audio
+            value: audio
+          - label: video
+            value: video
+          - label: vtt
+            value: vtt
+          - label: latex
+            value: latex
+          - label: email
+            value: email
+          - label: epub
+            value: epub
+          - label: boxnote
+            value: boxnote
+          - label: iwork_pages
+            value: iwork_pages
+          - label: iwork_keynote
+            value: iwork_keynote
+          - label: iwork_numbers
+            value: iwork_numbers
+          - label: ebcdic
+            value: ebcdic
+          - label: afp
+            value: afp
       - name: do_ocr
         widget_type: boolean
         label: OCR

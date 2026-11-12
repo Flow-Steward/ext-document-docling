@@ -22,6 +22,138 @@ ROOT_STEP_SCOPE = {
     "step_id": "convert",
     "step_execution_id": "2b0f6c1e-8d3a-4c55-9a51-0d6b1f1f0001",
 }
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("from_format", "not-a-format"),
+        ("table_mode", "turbo"),
+        ("from_format", 42),
+        ("table_mode", []),
+    ],
+)
+def test_invalid_conversion_option_fails_before_io(field, value, monkeypatch):
+    import docling_extension as ext
+
+    def unexpected(*args, **kwargs):
+        raise AssertionError("invalid options must not access the network or artifacts")
+
+    monkeypatch.setattr(ext, "_preflight_docling_url", unexpected)
+    monkeypatch.setattr(ext, "read_artifact_bytes", unexpected)
+    payload = {"action": {"input": {"artifact_handle": "artifact:input", field: value}}}
+    with pytest.raises(ext.DoclingError) as exc:
+        ext.convert_document(payload)
+    assert exc.value.code == "invalid_payload"
+    assert field in exc.value.message
+
+
+def test_conversion_option_defaults_and_supported_values():
+    import docling_extension as ext
+
+    expected_formats = {
+        "docx",
+        "doc",
+        "rtf",
+        "pptx",
+        "ppt",
+        "html",
+        "mhtml",
+        "image",
+        "pdf",
+        "asciidoc",
+        "md",
+        "csv",
+        "xlsx",
+        "xls",
+        "odt",
+        "ods",
+        "odp",
+        "xml_uspto",
+        "xml_jats",
+        "xml_xbrl",
+        "xml_doclang",
+        "dclx",
+        "mets_gbs",
+        "json_docling",
+        "audio",
+        "video",
+        "vtt",
+        "latex",
+        "email",
+        "epub",
+        "boxnote",
+        "iwork_pages",
+        "iwork_keynote",
+        "iwork_numbers",
+        "ebcdic",
+        "afp",
+    }
+    assert "from_formats" not in ext._docling_options({})
+    assert "table_mode" not in ext._docling_options({})
+    assert "from_formats" not in ext._docling_options({"from_format": ""})
+    for mode in ("fast", "accurate"):
+        assert ext._docling_options({"table_mode": mode})["table_mode"] == mode
+    for source in expected_formats:
+        assert ext._docling_options({"from_format": source})["from_formats"] == source
+
+
+@pytest.mark.parametrize(
+    "field,value,output",
+    [
+        ("from_format", "  pdf  ", "from_formats"),
+        ("table_mode", "\tfast\n", "table_mode"),
+        ("from_format", "\x1c\x85pdf\u3000", "from_formats"),
+    ],
+)
+def test_conversion_options_preserve_legacy_whitespace(field, value, output):
+    import docling_extension as ext
+
+    assert ext._docling_options({field: value})[output] == value.strip()
+
+
+def test_conversion_option_contracts_match_runtime():
+    import re
+
+    import docling_extension as ext
+    import yaml
+
+    operation = yaml.safe_load((BUNDLE_ROOT / "contracts/operation_manifest.yaml").read_text())[
+        "operations"
+    ][0]
+    form = yaml.safe_load((BUNDLE_ROOT / "contracts/step_ui_manifest.yaml").read_text())["forms"][0]
+    for field, allowed in (("from_format", ext.SOURCE_FORMATS), ("table_mode", ext.TABLE_MODES)):
+        schema = next(row for row in operation["inputs"] if row["name"] == field)["schema"]
+        widget = next(row for row in form["fields"] if row["name"] == field)
+        assert widget["widget_type"] == "select"
+        assert {item["value"] for item in widget["options"]} == set(allowed)
+        for value in allowed:
+            assert re.search(schema["pattern"], value)
+            assert re.search(schema["pattern"], f"  {value}\t")
+            assert re.search(schema["pattern"], f"\x1c\x85{value}\u3000")
+        for value in ("not-supported", "pdfx", "xpdf", "pdf\nother", "\ufeffpdf"):
+            assert not re.search(schema["pattern"], value)
+
+
+def test_release_descriptor_matches_manifest():
+    import yaml
+
+    manifest = yaml.safe_load((BUNDLE_ROOT / "extension.yaml").read_text())
+    descriptor = yaml.safe_load((BUNDLE_ROOT / "extension-descriptor.yaml").read_text())
+    assert manifest["extension_id"] == descriptor["extension_id"] == "flowsteward.docling"
+    assert manifest["version"] == descriptor["release_version"] == "0.3.3"
+    assert (
+        manifest["runtime"]["compatibility"]
+        == descriptor["runtime"]["compatibility"]
+        == {"platform_min": "1.4.0"}
+    )
+    assert (
+        manifest["runtime"]["extension_contract_v2"]
+        == descriptor["runtime"]["extension_contract_v2"]
+    )
+    assert descriptor["artifacts"]["extensions"][0]["ref"] == "extension.yaml"
+
+
 GROUP_STEP_SCOPE = {**ROOT_STEP_SCOPE, "group_id": "prepare_documents"}
 FOR_EACH_STEP_SCOPE = {
     **ROOT_STEP_SCOPE,
