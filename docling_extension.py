@@ -407,6 +407,8 @@ def _docling_options(input_payload: dict[str, Any]) -> dict[str, str | list[str]
     }
     for source, target in optional_keys.items():
         value = input_payload.get(source)
+        if source in {"from_format", "table_mode"} and isinstance(value, str):
+            value = value.strip()
         if value is None or value == "":
             continue
         options[target] = value

@@ -112,6 +112,20 @@ def test_conversion_options_preserve_legacy_whitespace(field, value, output):
     assert ext._docling_options({field: value})[output] == value.strip()
 
 
+@pytest.mark.parametrize(
+    "field,output", [("from_format", "from_formats"), ("table_mode", "table_mode")]
+)
+@pytest.mark.parametrize("value", ["  ", "\t", "\x1c\x85\u3000"])
+def test_whitespace_only_conversion_option_is_omitted(field, output, value):
+    import docling_extension as ext
+
+    original = {field: value, "ocr_lang": " en "}
+    result = ext._docling_options(original)
+    assert output not in result
+    assert result["ocr_lang"] == "en"
+    assert original == {field: value, "ocr_lang": " en "}
+
+
 def test_conversion_option_contracts_match_runtime():
     import re
 
