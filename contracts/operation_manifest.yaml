@@ -1,80 +1,89 @@
 operations:
-  - operation_id: convert_document
-    display_name: Convert Document
-    description: Convert one workflow artifact through Docling into Markdown and Docling JSON artifacts.
-    operation_kind: action
-    category: document_extraction
-    connection_type_ids: [docling]
-    inputs:
-      - name: artifact_handle
-        value_type: artifact_handle
-        required: true
-      - name: connection_ref
-        value_type: connection_ref
-        required: true
-      - name: from_format
-        value_type: text
-        required: false
-        schema:
-          type: string
-          pattern: '^[\u0009-\u000d\u001c-\u0020\u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]*(?:docx|doc|rtf|pptx|ppt|html|mhtml|image|pdf|asciidoc|md|csv|xlsx|xls|odt|ods|odp|xml_uspto|xml_jats|xml_xbrl|xml_doclang|dclx|mets_gbs|json_docling|audio|video|vtt|latex|email|epub|boxnote|iwork_pages|iwork_keynote|iwork_numbers|ebcdic|afp)?[\u0009-\u000d\u001c-\u0020\u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]*$'
-      - name: do_ocr
-        value_type: boolean
-        required: false
-      - name: force_ocr
-        value_type: boolean
-        required: false
-      - name: ocr_lang
-        value_type: text
-        required: false
-      - name: table_mode
-        value_type: text
-        required: false
-        schema:
-          type: string
-          pattern: '^[\u0009-\u000d\u001c-\u0020\u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]*(?:fast|accurate)?[\u0009-\u000d\u001c-\u0020\u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]*$'
-    outputs:
-      - name: markdown_artifact_handle
-        value_type: artifact_handle
-      - name: docling_json_artifact_handle
-        value_type: artifact_handle
-      - name: markdown
-        value_type: text
-      - name: markdown_chars
-        value_type: number
-      - name: markdown_preview
-        value_type: text
-      - name: markdown_truncated
-        value_type: boolean
-      - name: provider_status
-        value_type: text
-      - name: processing_time
-        value_type: number
-      - name: timings
-        value_type: object
-      - name: errors
-        value_type: array
-    result_fields:
-      - result.markdown_artifact_handle
-      - result.docling_json_artifact_handle
-      - result.markdown
-      - result.markdown_chars
-      - result.markdown_preview
-      - result.markdown_truncated
-      - result.provider_status
-      - result.processing_time
-    error_codes:
-      - invalid_payload
-      - invalid_connection
-      - network_blocked
-      - insecure_public_http
-      - input_too_large
-      - response_too_large
-      - output_too_large
-      - artifact_access_failed
-      - provider_request_failed
-      - provider_http_error
-      - invalid_provider_response
-      - provider_failed
-      - missing_markdown
-      - missing_docling_json
+- operation_id: convert_document
+  display_name: Convert a document to Markdown and structured JSON
+  description: Send one document artifact to the selected Docling service and save Markdown and Docling JSON artifacts.
+    Returns inline Markdown, preview and truncation status; input is limited to 20 MiB and the complete text remains
+    in the Markdown artifact.
+  operation_kind: action
+  category: document_extraction
+  connection_type_ids: [docling]
+  inputs:
+  - name: artifact_handle
+    value_type: artifact_handle
+    required: true
+    display_name: Source document artifact
+  - name: connection_ref
+    value_type: connection_ref
+    required: true
+    display_name: Project connection
+  - name: from_format
+    value_type: text
+    required: false
+    schema:
+      type: string
+      pattern: ^[\u0009-\u000d\u001c-\u0020\u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]*(?:docx|doc|rtf|pptx|ppt|html|mhtml|image|pdf|asciidoc|md|csv|xlsx|xls|odt|ods|odp|xml_uspto|xml_jats|xml_xbrl|xml_doclang|dclx|mets_gbs|json_docling|audio|video|vtt|latex|email|epub|boxnote|iwork_pages|iwork_keynote|iwork_numbers|ebcdic|afp)?[\u0009-\u000d\u001c-\u0020\u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]*$
+    display_name: Source document format
+  - name: do_ocr
+    value_type: boolean
+    required: false
+    display_name: Enable OCR
+  - name: force_ocr
+    value_type: boolean
+    required: false
+    display_name: Force OCR on all text
+  - name: ocr_lang
+    value_type: text
+    required: false
+    display_name: OCR language
+  - name: table_mode
+    value_type: text
+    required: false
+    schema:
+      type: string
+      pattern: ^[\u0009-\u000d\u001c-\u0020\u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]*(?:fast|accurate)?[\u0009-\u000d\u001c-\u0020\u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]*$
+    display_name: Table recognition mode
+  outputs:
+  - name: markdown_artifact_handle
+    value_type: artifact_handle
+  - name: docling_json_artifact_handle
+    value_type: artifact_handle
+  - name: markdown
+    value_type: text
+  - name: markdown_chars
+    value_type: number
+  - name: markdown_preview
+    value_type: text
+  - name: markdown_truncated
+    value_type: boolean
+  - name: provider_status
+    value_type: text
+  - name: processing_time
+    value_type: number
+  - name: timings
+    value_type: object
+  - name: errors
+    value_type: array
+  result_fields:
+  - result.markdown_artifact_handle
+  - result.docling_json_artifact_handle
+  - result.markdown
+  - result.markdown_chars
+  - result.markdown_preview
+  - result.markdown_truncated
+  - result.provider_status
+  - result.processing_time
+  error_codes:
+  - invalid_payload
+  - invalid_connection
+  - network_blocked
+  - insecure_public_http
+  - input_too_large
+  - response_too_large
+  - output_too_large
+  - artifact_access_failed
+  - provider_request_failed
+  - provider_http_error
+  - invalid_provider_response
+  - provider_failed
+  - missing_markdown
+  - missing_docling_json

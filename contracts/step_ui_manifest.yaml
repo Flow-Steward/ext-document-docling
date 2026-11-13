@@ -1,104 +1,113 @@
 forms:
-  - operation_id: convert_document
-    title: Convert document
-    section: Document conversion
-    fields:
-      - name: artifact_handle
-        widget_type: artifact_picker
-        label: Artifact
-        required: true
-      - name: from_format
-        widget_type: select
-        label: Source format
-        help_text: Leave empty for automatic detection. Options follow docling-serve 1.38.2; other versions may support different formats.
-        options:
-          - label: docx
-            value: docx
-          - label: doc
-            value: doc
-          - label: rtf
-            value: rtf
-          - label: pptx
-            value: pptx
-          - label: ppt
-            value: ppt
-          - label: html
-            value: html
-          - label: mhtml
-            value: mhtml
-          - label: image
-            value: image
-          - label: pdf
-            value: pdf
-          - label: asciidoc
-            value: asciidoc
-          - label: md
-            value: md
-          - label: csv
-            value: csv
-          - label: xlsx
-            value: xlsx
-          - label: xls
-            value: xls
-          - label: odt
-            value: odt
-          - label: ods
-            value: ods
-          - label: odp
-            value: odp
-          - label: xml_uspto
-            value: xml_uspto
-          - label: xml_jats
-            value: xml_jats
-          - label: xml_xbrl
-            value: xml_xbrl
-          - label: xml_doclang
-            value: xml_doclang
-          - label: dclx
-            value: dclx
-          - label: mets_gbs
-            value: mets_gbs
-          - label: json_docling
-            value: json_docling
-          - label: audio
-            value: audio
-          - label: video
-            value: video
-          - label: vtt
-            value: vtt
-          - label: latex
-            value: latex
-          - label: email
-            value: email
-          - label: epub
-            value: epub
-          - label: boxnote
-            value: boxnote
-          - label: iwork_pages
-            value: iwork_pages
-          - label: iwork_keynote
-            value: iwork_keynote
-          - label: iwork_numbers
-            value: iwork_numbers
-          - label: ebcdic
-            value: ebcdic
-          - label: afp
-            value: afp
-      - name: do_ocr
-        widget_type: boolean
-        label: OCR
-      - name: force_ocr
-        widget_type: boolean
-        label: Force OCR
-      - name: ocr_lang
-        widget_type: text
-        label: OCR language
-        placeholder: en
-      - name: table_mode
-        widget_type: select
-        label: Table mode
-        options:
-          - label: Fast
-            value: fast
-          - label: Accurate
-            value: accurate
+- operation_id: convert_document
+  title: Convert a document to Markdown and structured JSON
+  section: Document conversion
+  fields:
+  - name: artifact_handle
+    widget_type: artifact_picker
+    label: Source document artifact
+    required: true
+    help_text: Map a document artifact from an earlier workflow step, up to 20 MiB. The selected Docling service
+      must support its format.
+  - name: from_format
+    widget_type: select
+    label: Source document format
+    help_text: Leave blank for automatic detection. Explicit options follow docling-serve 1.38.2; support can differ
+      on other server versions.
+    options:
+    - label: docx
+      value: docx
+    - label: doc
+      value: doc
+    - label: rtf
+      value: rtf
+    - label: pptx
+      value: pptx
+    - label: ppt
+      value: ppt
+    - label: html
+      value: html
+    - label: mhtml
+      value: mhtml
+    - label: image
+      value: image
+    - label: pdf
+      value: pdf
+    - label: asciidoc
+      value: asciidoc
+    - label: md
+      value: md
+    - label: csv
+      value: csv
+    - label: xlsx
+      value: xlsx
+    - label: xls
+      value: xls
+    - label: odt
+      value: odt
+    - label: ods
+      value: ods
+    - label: odp
+      value: odp
+    - label: xml_uspto
+      value: xml_uspto
+    - label: xml_jats
+      value: xml_jats
+    - label: xml_xbrl
+      value: xml_xbrl
+    - label: xml_doclang
+      value: xml_doclang
+    - label: dclx
+      value: dclx
+    - label: mets_gbs
+      value: mets_gbs
+    - label: json_docling
+      value: json_docling
+    - label: audio
+      value: audio
+    - label: video
+      value: video
+    - label: vtt
+      value: vtt
+    - label: latex
+      value: latex
+    - label: email
+      value: email
+    - label: epub
+      value: epub
+    - label: boxnote
+      value: boxnote
+    - label: iwork_pages
+      value: iwork_pages
+    - label: iwork_keynote
+      value: iwork_keynote
+    - label: iwork_numbers
+      value: iwork_numbers
+    - label: ebcdic
+      value: ebcdic
+    - label: afp
+      value: afp
+  - name: do_ocr
+    widget_type: boolean
+    label: Enable OCR
+    help_text: Optional setting forwarded to Docling. Enable for scanned text; leave unset to use the service default.
+  - name: force_ocr
+    widget_type: boolean
+    label: Force OCR on all text
+    help_text: Optional setting forwarded to Docling. Use when existing text extraction is unsuitable; leave unset
+      to use the service default.
+  - name: ocr_lang
+    widget_type: text
+    label: OCR language
+    placeholder: en
+    help_text: Optional OCR language code forwarded to the service. Supported codes depend on its configured OCR
+      engine; leave blank for its default.
+  - name: table_mode
+    widget_type: select
+    label: Table recognition mode
+    options:
+    - label: Fast
+      value: fast
+    - label: Accurate
+      value: accurate
+    help_text: Choose fast or accurate when supported by the service. Leave blank to use the Docling service default.

@@ -124,3 +124,7 @@ Limits:
 
 The extension does not follow redirects and relies on the Flow Steward extension
 SDK for URL validation, DNS pinning, and peer verification.
+
+## Workflow action setup and examples
+
+See [Workflow actions](docs/workflow-actions.md) for connection setup, inputs and practical examples.

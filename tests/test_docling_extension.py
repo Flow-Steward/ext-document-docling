@@ -155,7 +155,7 @@ def test_release_descriptor_matches_manifest():
     manifest = yaml.safe_load((BUNDLE_ROOT / "extension.yaml").read_text())
     descriptor = yaml.safe_load((BUNDLE_ROOT / "extension-descriptor.yaml").read_text())
     assert manifest["extension_id"] == descriptor["extension_id"] == "flowsteward.docling"
-    assert manifest["version"] == descriptor["release_version"] == "0.3.3"
+    assert manifest["version"] == descriptor["release_version"] == "0.3.4"
     assert (
         manifest["runtime"]["compatibility"]
         == descriptor["runtime"]["compatibility"]

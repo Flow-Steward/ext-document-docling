@@ -2,7 +2,7 @@ manifest_version: 2
 lifecycle: {data_schema_version: 1, data_migrations: []}
 extension_id: flowsteward.docling
 kind: tool_provider
-version: 0.3.3
+version: 0.3.4
 display_name: Docling Document Extraction
 description: |-
   Prepare documents for agents, classification and review with Docling Document Extraction. It sends a workflow document artifact to an external Docling REST service and returns Markdown plus Docling JSON. It writes both outputs as workflow artifacts, giving later steps readable text and the service's structured document representation. The result also includes inline Markdown, a preview, the full character count and a flag showing whether the inline text was shortened.
