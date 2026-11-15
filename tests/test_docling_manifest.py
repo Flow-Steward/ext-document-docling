@@ -79,7 +79,8 @@ def test_about_page_uses_the_existing_static_page_contract() -> None:
     ui_manifest = (BUNDLE_ROOT / "ui" / "ui_manifest.yaml").read_text()
     about_path = BUNDLE_ROOT / "ui" / "pages" / "about.yaml"
 
-    assert ui_manifest.count("- ref:") == 2
+    assert ui_manifest.count("- ref:") == 3
+    assert "ref: pages/support.yaml" in ui_manifest
     assert "ref: pages/about.yaml" in ui_manifest
     assert "ref: pages/configuration.yaml" in ui_manifest
     assert "pages/overview.yaml" not in ui_manifest
