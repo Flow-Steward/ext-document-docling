@@ -5,10 +5,12 @@ import ipaddress
 import json
 import mimetypes
 import os
+import re
+import time
 import uuid
 from typing import Any
 from urllib.error import HTTPError
-from urllib.parse import urljoin, urlparse
+from urllib.parse import quote, urljoin, urlparse
 
 from flowsteward_extension_sdk import report_progress, runtime_context_from_payload
 from flowsteward_extension_sdk.artifacts import (
@@ -73,6 +75,16 @@ SOURCE_FORMATS = frozenset(
     }
 )
 TABLE_MODES = frozenset({"fast", "accurate"})
+#: Longest single wait for Docling to report a task finished. docling-serve
+#: answers a status poll as soon as the task completes, so a short document is
+#: back without the sync endpoint's fixed polling delay (2 s by default).
+STATUS_POLL_WAIT_SECONDS = 10.0
+#: Extra time for one status request on top of the wait it asks for.
+STATUS_POLL_GRACE_SECONDS = 10.0
+#: A server that ignores ``wait`` answers at once; poll it no faster than this.
+STATUS_POLL_MIN_INTERVAL_SECONDS = 0.5
+TASK_FINISHED_STATUSES = frozenset({"success", "partial_success", "failure", "skipped"})
+_TASK_ID_RE = re.compile(r"^[A-Za-z0-9_.-]{1,128}$")
 MARKDOWN_PREVIEW_MAX_CHARS = 4000
 # The whole document goes back inline as `markdown`. Core kills an extension
 # whose stdout passes FS_EXTENSION_OUTPUT_MAX_BYTES (5 MiB by default), so the
@@ -216,6 +228,10 @@ def _preflight_docling_url(url: str) -> tuple[str, tuple[str, ...]]:
     return normalized, tuple(ips)
 
 
+class _AsyncUnsupported(Exception):
+    """The Docling service has no asynchronous conversion endpoint."""
+
+
 def _post_docling_convert(
     *,
     base_url: str,
@@ -226,7 +242,12 @@ def _post_docling_convert(
     pinned_ips: tuple[str, ...],
     timeout_seconds: int,
 ) -> dict[str, Any]:
-    url = urljoin(f"{base_url.rstrip('/')}/", "v1/convert/file")
+    """Convert one document; the request timeout bounds the whole conversion.
+
+    The asynchronous API answers as soon as Docling finishes. A service without
+    it (404 or 405 on the async endpoint) gets the single synchronous request.
+    """
+    endpoint = f"{base_url.rstrip('/')}/"
     boundary = f"flowsteward-{uuid.uuid4().hex}"
     body = _multipart_body(
         boundary=boundary,
@@ -238,24 +259,108 @@ def _post_docling_convert(
         or "application/octet-stream",
         file_body=document_body,
     )
-    headers = {
-        "Accept": _TOKEN_APPLICATION_JSON,
-        "Content-Type": f"multipart/form-data; boundary={boundary}",
-        "Content-Length": str(len(body)),
-    }
+    content_type = f"multipart/form-data; boundary={boundary}"
+    call = {"api_key": api_key, "pinned_ips": pinned_ips}
+    try:
+        return _convert_async(endpoint, body, content_type, timeout_seconds=timeout_seconds, **call)
+    except _AsyncUnsupported:
+        return _docling_call(
+            urljoin(endpoint, "v1/convert/file"),
+            method="POST",
+            body=body,
+            content_type=content_type,
+            timeout_seconds=float(timeout_seconds),
+            purpose="Docling convert endpoint",
+            **call,
+        )
+
+
+def _convert_async(
+    endpoint: str,
+    body: bytes,
+    content_type: str,
+    *,
+    timeout_seconds: int,
+    api_key: str,
+    pinned_ips: tuple[str, ...],
+) -> dict[str, Any]:
+    deadline = time.monotonic() + timeout_seconds
+    call = {"api_key": api_key, "pinned_ips": pinned_ips}
+    submitted = _docling_call(
+        urljoin(endpoint, "v1/convert/file/async"),
+        method="POST",
+        body=body,
+        content_type=content_type,
+        timeout_seconds=float(timeout_seconds),
+        purpose="Docling convert endpoint",
+        unsupported_statuses=frozenset({404, 405}),
+        **call,
+    )
+    task_id = _text(submitted.get("task_id"))
+    if not _TASK_ID_RE.match(task_id):
+        raise DoclingError("invalid_provider_response", "Docling did not return a task id")
+    task = quote(task_id, safe="")
+    status = _text(submitted.get("task_status")).lower()
+    while status not in TASK_FINISHED_STATUSES:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise DoclingError(
+                "provider_request_failed",
+                f"Docling did not finish the conversion within {timeout_seconds} seconds",
+            )
+        wait = min(STATUS_POLL_WAIT_SECONDS, remaining)
+        asked_at = time.monotonic()
+        polled = _docling_call(
+            urljoin(endpoint, f"v1/status/poll/{task}?wait={wait:.1f}"),
+            method="GET",
+            timeout_seconds=wait + STATUS_POLL_GRACE_SECONDS,
+            purpose="Docling status endpoint",
+            **call,
+        )
+        status = _text(polled.get("task_status")).lower()
+        answered_in = time.monotonic() - asked_at
+        if status not in TASK_FINISHED_STATUSES and answered_in < STATUS_POLL_MIN_INTERVAL_SECONDS:
+            time.sleep(STATUS_POLL_MIN_INTERVAL_SECONDS - answered_in)
+    return _docling_call(
+        urljoin(endpoint, f"v1/result/{task}"),
+        method="GET",
+        timeout_seconds=float(max(1.0, deadline - time.monotonic())),
+        purpose="Docling result endpoint",
+        **call,
+    )
+
+
+def _docling_call(
+    url: str,
+    *,
+    method: str,
+    api_key: str,
+    pinned_ips: tuple[str, ...],
+    timeout_seconds: float,
+    purpose: str,
+    body: bytes | None = None,
+    content_type: str = "",
+    unsupported_statuses: frozenset[int] = frozenset(),
+) -> dict[str, Any]:
+    headers = {"Accept": _TOKEN_APPLICATION_JSON}
+    if body is not None:
+        headers["Content-Type"] = content_type
+        headers["Content-Length"] = str(len(body))
     if api_key:
         headers["X-Api-Key"] = api_key
-    request = Request(url, data=body, method="POST", headers=headers)
+    request = Request(url, data=body, method=method, headers=headers)
     try:
         with open_pinned_url(
             request,
             timeout_seconds=float(timeout_seconds),
-            purpose="Docling convert endpoint",
+            purpose=purpose,
             pinned_ips=pinned_ips,
         ) as response:
             status = int(getattr(response, "status", 200) or 200)
             response_body = _read_limited_response(response)
     except HTTPError as exc:
+        if exc.code in unsupported_statuses:
+            raise _AsyncUnsupported from exc
         detail = _bounded_text(exc.read(4096).decode("utf-8", errors="replace"), limit=1000)
         raise DoclingError(
             "provider_http_error",

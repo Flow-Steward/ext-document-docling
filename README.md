@@ -103,9 +103,14 @@ HTTP SDK, not only to this Docling extension.
 
 ## Operation
 
-`convert_document` accepts only `artifact_handle` for document input. It sends a
-multipart request to `/v1/convert/file`, always requests `to_formats=md,json`,
-and uses `image_export_mode=placeholder`.
+`convert_document` accepts only `artifact_handle` for document input. It submits a
+multipart request to `/v1/convert/file/async`, waits for the task with
+`/v1/status/poll/{task_id}?wait=…` and fetches `/v1/result/{task_id}`, so the
+result arrives as soon as Docling finishes rather than on the synchronous
+endpoint's polling interval (2 seconds by default in docling-serve). A service
+without the asynchronous API (404 or 405) gets the single synchronous request to
+`/v1/convert/file`. It always requests `to_formats=md,json` and uses
+`image_export_mode=placeholder`.
 
 Optional settings:
 
@@ -121,7 +126,7 @@ Limits:
 - input artifact: 20 MiB
 - Docling response: 100 MiB
 - each output artifact: 50 MiB
-- Docling request timeout: max 240 seconds
+- Docling request timeout: max 240 seconds, for the whole conversion
 
 The extension does not follow redirects and relies on the Flow Steward extension
 SDK for URL validation, DNS pinning, and peer verification.

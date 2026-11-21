@@ -158,7 +158,7 @@ def test_release_descriptor_matches_manifest():
     manifest = yaml.safe_load((BUNDLE_ROOT / "extension.yaml").read_text())
     descriptor = yaml.safe_load((BUNDLE_ROOT / "extension-descriptor.yaml").read_text())
     assert manifest["extension_id"] == descriptor["extension_id"] == "flowsteward.docling"
-    assert manifest["version"] == descriptor["release_version"] == "0.3.6"
+    assert manifest["version"] == descriptor["release_version"] == "0.3.7"
     assert (
         manifest["runtime"]["compatibility"]
         == descriptor["runtime"]["compatibility"]
@@ -298,23 +298,47 @@ class _DoclingHandler(BaseHTTPRequestHandler):
         "errors": [],
     }
     requests: ClassVar[list[dict[str, Any]]] = []
+    #: False plays a docling-serve without the asynchronous API.
+    async_supported: ClassVar[bool] = True
+
+    def _answer(self, status: int, payload: Any) -> None:
+        encoded = json.dumps(payload).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(encoded)))
+        self.end_headers()
+        self.wfile.write(encoded)
 
     def do_POST(self) -> None:
         length = int(self.headers.get("Content-Length") or "0")
         body = self.rfile.read(length)
         self.__class__.requests.append(
             {
+                "method": "POST",
                 "path": self.path,
                 "headers": dict(self.headers),
                 "body": body,
             }
         )
-        encoded = json.dumps(self.__class__.response_payload).encode("utf-8")
-        self.send_response(200)
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", str(len(encoded)))
-        self.end_headers()
-        self.wfile.write(encoded)
+        if self.path == "/v1/convert/file/async":
+            if not self.__class__.async_supported:
+                self._answer(404, {"detail": "Not Found"})
+                return
+            self._answer(200, {"task_id": "task-1", "task_status": "pending"})
+            return
+        self._answer(200, self.__class__.response_payload)
+
+    def do_GET(self) -> None:
+        self.__class__.requests.append(
+            {"method": "GET", "path": self.path, "headers": dict(self.headers), "body": b""}
+        )
+        if self.path.startswith("/v1/status/poll/task-1"):
+            self._answer(200, {"task_id": "task-1", "task_status": "success"})
+            return
+        if self.path == "/v1/result/task-1":
+            self._answer(200, self.__class__.response_payload)
+            return
+        self._answer(404, {"detail": "Not Found"})
 
     def log_message(self, *_args: Any) -> None:
         return None
@@ -324,6 +348,7 @@ class _DoclingHandler(BaseHTTPRequestHandler):
 def docling_server(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("FS_ALLOW_PRIVATE_REMOTE_URLS", "1")
     _DoclingHandler.requests = []
+    _DoclingHandler.async_supported = True
     _DoclingHandler.response_payload = {
         "document": {
             "md_content": "# Extracted\n\nHello Docling",
@@ -380,10 +405,16 @@ def test_convert_document_posts_once_and_writes_markdown_and_json_artifacts(
     )
     assert stored_json["schema_name"] == "DoclingDocument"
 
-    assert len(handler.requests) == 1
+    # Submitted once, polled until done, then the result is fetched; every call
+    # carries the API key.
+    assert [(r["method"], r["path"].split("?")[0]) for r in handler.requests] == [
+        ("POST", "/v1/convert/file/async"),
+        ("GET", "/v1/status/poll/task-1"),
+        ("GET", "/v1/result/task-1"),
+    ]
+    assert "wait=" in handler.requests[1]["path"]
+    assert all(r["headers"]["X-Api-Key"] == "secret-key" for r in handler.requests)
     request = handler.requests[0]
-    assert request["path"] == "/v1/convert/file"
-    assert request["headers"]["X-Api-Key"] == "secret-key"
     body = request["body"]
     assert b'name="to_formats"\r\n\r\nmd' in body
     assert b'name="to_formats"\r\n\r\njson' in body
@@ -418,7 +449,7 @@ def test_convert_document_reports_each_stage_before_it_runs(
     assert stages == [
         ("Reading the document", 0),
         ("Converting the document (1 KB) with Docling; this can take a few minutes", 0),
-        ("Saving the Markdown and Docling JSON files", 1),
+        ("Saving the Markdown and Docling JSON files", 3),
     ]
 
 
@@ -468,17 +499,22 @@ def test_convert_document_uses_preflight_pins_for_provider_request(
 
         def __init__(self) -> None:
             self._read = False
+            self.url = ""
 
         def read(self, _size: int = -1) -> bytes:
             if self._read:
                 return b""
             self._read = True
-            return json.dumps(
-                {
+            if self.url.endswith("/v1/convert/file/async"):
+                answer: dict[str, Any] = {"task_id": "t-1", "task_status": "started"}
+            elif "/v1/status/poll/" in self.url:
+                answer = {"task_id": "t-1", "task_status": "success"}
+            else:
+                answer = {
                     "document": {"md_content": "ok", "json_content": {}},
                     "status": "success",
                 }
-            ).encode("utf-8")
+            return json.dumps(answer).encode("utf-8")
 
         def __enter__(self):
             return self
@@ -487,9 +523,11 @@ def test_convert_document_uses_preflight_pins_for_provider_request(
             return None
 
     def _open(request: Any, **kwargs: Any) -> _Response:
-        captured["url"] = request.full_url
-        captured["pinned_ips"] = kwargs.get("pinned_ips")
-        return _Response()
+        captured.setdefault("urls", []).append(request.full_url)
+        captured.setdefault("pinned_ips", set()).add(kwargs.get("pinned_ips"))
+        answer = _Response()
+        answer.url = request.full_url
+        return answer
 
     monkeypatch.setattr(
         docling_extension,
@@ -503,10 +541,12 @@ def test_convert_document_uses_preflight_pins_for_provider_request(
     )
 
     assert response["ok"] is True
-    assert captured == {
-        "url": "https://docling.example/v1/convert/file",
-        "pinned_ips": ("203.0.113.10",),
-    }
+    assert [url.split("?")[0] for url in captured["urls"]] == [
+        "https://docling.example/v1/convert/file/async",
+        "https://docling.example/v1/status/poll/t-1",
+        "https://docling.example/v1/result/t-1",
+    ]
+    assert captured["pinned_ips"] == {("203.0.113.10",)}
 
 
 @pytest.mark.parametrize(
@@ -679,7 +719,7 @@ def test_every_final_scope_owner_converts_and_writes_artifacts(
     assert (BUNDLE_ROOT / ".test-artifacts" / "md_out-document.md").read_text() == (
         "# Extracted\n\nHello Docling"
     )
-    assert len(handler.requests) == 1
+    assert len(handler.requests) == 3
 
 
 @pytest.mark.parametrize(
@@ -816,3 +856,115 @@ def test_inline_markdown_cuts_only_at_the_output_limit(monkeypatch):
     assert document.startswith(inline)
     assert len(json.dumps(inline, ensure_ascii=False).encode("utf-8")) <= 1000
     assert len(json.dumps(document[: len(inline) + 1], ensure_ascii=False).encode("utf-8")) > 1000
+
+
+def test_a_service_without_the_async_api_gets_the_single_sync_request(
+    tmp_path: Path, docling_server
+):
+    import docling_extension
+
+    base_url, handler = docling_server
+    handler.async_supported = False
+    source = tmp_path / "source.pdf"
+    source.write_bytes(b"%PDF test")
+
+    response = docling_extension.handle_payload(_payload(base_url=base_url, input_body_path=source))
+
+    assert response["ok"] is True
+    assert response["result"]["markdown"] == "# Extracted\n\nHello Docling"
+    assert [(r["method"], r["path"]) for r in handler.requests] == [
+        ("POST", "/v1/convert/file/async"),
+        ("POST", "/v1/convert/file"),
+    ]
+    # The fallback sends the very same multipart body.
+    assert handler.requests[0]["body"] == handler.requests[1]["body"]
+
+
+def _scripted_calls(monkeypatch: pytest.MonkeyPatch, answers: list[dict[str, Any]]):
+    import docling_extension
+
+    calls: list[dict[str, Any]] = []
+
+    def _call(url: str, **kwargs: Any) -> dict[str, Any]:
+        calls.append({"url": url, **kwargs})
+        return answers.pop(0) if len(answers) > 1 else answers[0]
+
+    monkeypatch.setattr(docling_extension, "_docling_call", _call)
+    return calls
+
+
+def test_the_request_timeout_bounds_the_whole_conversion(monkeypatch: pytest.MonkeyPatch):
+    import docling_extension
+
+    clock = iter([0.0, 0.0, 1.0, 6.0, 6.0, 6.0, 7.0, 11.0])
+    monkeypatch.setattr(docling_extension.time, "monotonic", lambda: next(clock))
+    monkeypatch.setattr(docling_extension.time, "sleep", lambda _s: None)
+    calls = _scripted_calls(
+        monkeypatch,
+        [
+            {"task_id": "t-1", "task_status": "pending"},
+            {"task_id": "t-1", "task_status": "started"},
+        ],
+    )
+
+    with pytest.raises(docling_extension.DoclingError) as raised:
+        docling_extension._convert_async(
+            "http://docling/",
+            b"x",
+            "multipart/form-data",
+            timeout_seconds=10,
+            api_key="",
+            pinned_ips=(),
+        )
+
+    assert raised.value.code == "provider_request_failed"
+    assert "within 10 seconds" in str(raised.value)
+    # Each poll asks for no longer than what is left of the timeout.
+    assert [c["url"].split("wait=")[1] for c in calls[1:]] == ["10.0", "4.0"]
+
+
+def test_a_task_id_that_is_not_an_id_is_refused(monkeypatch: pytest.MonkeyPatch):
+    import docling_extension
+
+    _scripted_calls(monkeypatch, [{"task_id": "../result/other", "task_status": "pending"}])
+
+    with pytest.raises(docling_extension.DoclingError) as raised:
+        docling_extension._convert_async(
+            "http://docling/",
+            b"x",
+            "multipart/form-data",
+            timeout_seconds=10,
+            api_key="",
+            pinned_ips=(),
+        )
+
+    assert raised.value.code == "invalid_provider_response"
+
+
+def test_a_service_that_ignores_wait_is_not_polled_in_a_tight_loop(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    import docling_extension
+
+    slept: list[float] = []
+    monkeypatch.setattr(docling_extension.time, "sleep", slept.append)
+    answers = [
+        {"task_id": "t-1", "task_status": "pending"},
+        {"task_id": "t-1", "task_status": "started"},
+        {"task_id": "t-1", "task_status": "success"},
+        {"status": "success", "document": {}},
+    ]
+    calls = _scripted_calls(monkeypatch, answers)
+
+    result = docling_extension._convert_async(
+        "http://docling/",
+        b"x",
+        "multipart/form-data",
+        timeout_seconds=30,
+        api_key="",
+        pinned_ips=(),
+    )
+
+    assert result == {"status": "success", "document": {}}
+    assert calls[-1]["url"] == "http://docling/v1/result/t-1"
+    assert len(slept) == 1 and 0 < slept[0] <= docling_extension.STATUS_POLL_MIN_INTERVAL_SECONDS
