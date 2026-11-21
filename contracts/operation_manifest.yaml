@@ -35,6 +35,10 @@ operations:
     value_type: text
     required: false
     display_name: OCR language
+  - name: do_table_structure
+    value_type: boolean
+    required: false
+    display_name: Recognize table structure
   - name: table_mode
     value_type: text
     required: false

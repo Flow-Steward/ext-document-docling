@@ -42,6 +42,7 @@ def test_step_ui_manifest_declares_workflow_form_controls() -> None:
     assert "name: force_ocr" in step_ui
     assert "name: ocr_lang" in step_ui
     assert "name: table_mode" in step_ui
+    assert "name: do_table_structure" in step_ui
     assert "widget_type: boolean" in step_ui
     assert "widget_type: select" in step_ui
     assert "value: fast" in step_ui

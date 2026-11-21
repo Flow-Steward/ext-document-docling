@@ -102,6 +102,11 @@ forms:
     placeholder: en
     help_text: Optional OCR language code forwarded to the service. Supported codes depend on its configured OCR
       engine; leave blank for its default.
+  - name: do_table_structure
+    widget_type: boolean
+    label: Recognize table structure
+    help_text: Optional setting forwarded to Docling. Turn off for receipts, photos and plain text to convert faster;
+      leave unset to use the service default.
   - name: table_mode
     widget_type: select
     label: Table recognition mode

@@ -113,6 +113,7 @@ Optional settings:
 - `do_ocr`
 - `force_ocr`
 - `ocr_lang`
+- `do_table_structure`
 - `table_mode`
 
 Limits:

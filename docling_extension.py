@@ -403,6 +403,7 @@ def _docling_options(input_payload: dict[str, Any]) -> dict[str, str | list[str]
         "do_ocr": "do_ocr",
         "force_ocr": "force_ocr",
         "ocr_lang": "ocr_lang",
+        "do_table_structure": "do_table_structure",
         "table_mode": "table_mode",
     }
     for source, target in optional_keys.items():

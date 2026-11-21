@@ -28,6 +28,9 @@ actions:
   - name: ocr_lang
     type: string
     required: false
+  - name: do_table_structure
+    type: boolean
+    required: false
   - name: table_mode
     type: string
     required: false

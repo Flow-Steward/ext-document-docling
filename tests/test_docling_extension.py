@@ -91,6 +91,9 @@ def test_conversion_option_defaults_and_supported_values():
     }
     assert "from_formats" not in ext._docling_options({})
     assert "table_mode" not in ext._docling_options({})
+    assert "do_table_structure" not in ext._docling_options({})
+    assert ext._docling_options({"do_table_structure": False})["do_table_structure"] == "false"
+    assert ext._docling_options({"do_table_structure": True})["do_table_structure"] == "true"
     assert "from_formats" not in ext._docling_options({"from_format": ""})
     for mode in ("fast", "accurate"):
         assert ext._docling_options({"table_mode": mode})["table_mode"] == mode
@@ -155,7 +158,7 @@ def test_release_descriptor_matches_manifest():
     manifest = yaml.safe_load((BUNDLE_ROOT / "extension.yaml").read_text())
     descriptor = yaml.safe_load((BUNDLE_ROOT / "extension-descriptor.yaml").read_text())
     assert manifest["extension_id"] == descriptor["extension_id"] == "flowsteward.docling"
-    assert manifest["version"] == descriptor["release_version"] == "0.3.5"
+    assert manifest["version"] == descriptor["release_version"] == "0.3.6"
     assert (
         manifest["runtime"]["compatibility"]
         == descriptor["runtime"]["compatibility"]
@@ -209,6 +212,7 @@ def _payload(
                 "do_ocr": True,
                 "force_ocr": False,
                 "ocr_lang": "en",
+                "do_table_structure": False,
                 "table_mode": "fast",
             },
         },
@@ -386,6 +390,7 @@ def test_convert_document_posts_once_and_writes_markdown_and_json_artifacts(
     assert b'name="image_export_mode"\r\n\r\nplaceholder' in body
     assert b'name="from_formats"\r\n\r\npdf' in body
     assert b'name="do_ocr"\r\n\r\ntrue' in body
+    assert b'name="do_table_structure"\r\n\r\nfalse' in body
 
 
 def test_convert_document_reports_each_stage_before_it_runs(

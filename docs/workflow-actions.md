@@ -15,6 +15,7 @@ Send one document artifact to the selected Docling service and save Markdown and
 - **Enable OCR**: Optional setting forwarded to Docling. Enable for scanned text; leave unset to use the service default.
 - **Force OCR on all text**: Optional setting forwarded to Docling. Use when existing text extraction is unsuitable; leave unset to use the service default.
 - **OCR language**: Optional OCR language code forwarded to the service. Supported codes depend on its configured OCR engine; leave blank for its default.
+- **Recognize table structure**: Optional setting forwarded to Docling. Turn off for receipts, photos and plain text to convert faster; leave unset to use the service default.
 - **Table recognition mode**: Choose fast or accurate when supported by the service. Leave blank to use the Docling service default.
 
 Example input values:
